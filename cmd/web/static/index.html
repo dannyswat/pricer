@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricer</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #171e26; --panel2: #1d2631; --line: #2a3644;
+    --text: #e6edf3; --muted: #8b9aab; --accent: #4cc2ff; --accent2: #ffb454;
+    --good: #5fd38d; --bad: #ff7a7a; --radius: 10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f6f9; --panel: #ffffff; --panel2: #f0f3f7; --line: #d8dee6;
+      --text: #18202a; --muted: #5d6b7b; --accent: #0a74c9; --accent2: #c26a00;
+      --good: #1a8d4a; --bad: #c93636;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 14px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; }
+  header h1 { font-size: 18px; margin: 0; }
+  header span { color: var(--muted); }
+  .app { display: grid; grid-template-columns: 240px 340px minmax(0, 1fr); gap: 16px; padding: 16px 24px; align-items: start; }
+  @media (max-width: 1100px) { .app { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .products { display: flex; flex-direction: column; gap: 6px; }
+  .products button { text-align: left; background: var(--panel2); color: var(--text); border: 1px solid transparent;
+    border-radius: 8px; padding: 9px 11px; cursor: pointer; font: inherit; }
+  .products button:hover { border-color: var(--line); }
+  .products button.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel2)); }
+  .desc { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+  .group { margin-bottom: 16px; }
+  .group:last-child { margin-bottom: 0; }
+  .field { margin-bottom: 11px; }
+  .field label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .field .row { display: flex; gap: 10px; align-items: center; }
+  input[type=number], input[type=date], input[type=text] {
+    width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
+  input:focus { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); border-color: var(--accent); }
+  .row input[type=number] { width: 92px; flex: none; }
+  input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+  .help { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .results { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .title h2 { margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .badge { font-size: 12px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line); }
+  .badge.in { color: var(--bad); border-color: var(--bad); }
+  .badge.out { color: var(--good); border-color: var(--good); }
+  .model { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .card { background: var(--panel2); border-radius: 8px; padding: 10px 12px; }
+  .card .k { color: var(--muted); font-size: 12px; }
+  .card .v { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .card:first-child .v { color: var(--accent); }
+  .card .n { color: var(--muted); font-size: 11.5px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+  dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; }
+  dt { color: var(--muted); } dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  .basket td input { padding: 4px 6px; text-align: right; }
+  .basket td input[type=text] { text-align: left; }
+  .basket button.x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+  .basket button.x:hover { color: var(--bad); }
+  .add { background: var(--panel2); color: var(--text); border: 1px dashed var(--line); border-radius: 6px;
+    padding: 5px 10px; cursor: pointer; margin-top: 8px; font: inherit; }
+  .error { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent);
+    border: 1px solid var(--bad); border-radius: 8px; padding: 10px 12px; }
+  .notes { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; padding-left: 18px; }
+  .busy { opacity: .55; transition: opacity .15s; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body>
+<header><h1>Pricer</h1><span>Theoretical prices for options and structured notes</span></header>
+<div class="app">
+  <nav class="panel"><h2>Product</h2><div class="products" id="products"></div></nav>
+  <section class="panel" id="inputs"></section>
+  <section class="results" id="results"></section>
+</div>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat(Infinity)) if (kid != null) e.append(kid);
+  return e;
+};
+
+let catalog = [], current = null, values = {}, timer = null, inflight = null;
+
+const fmt = {
+  money: v => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  percent: v => (v * 100).toFixed(2) + '%',
+  number: v => v.toFixed(4),
+};
+const shown = (f, v) => f.kind === 'percent' ? +(v * 100).toPrecision(10) : v;
+const stored = (f, d) => f.kind === 'percent' ? d / 100 : d;
+
+async function init() {
+  catalog = await (await fetch('/api/products')).json();
+  const nav = $('#products');
+  for (const p of catalog) {
+    nav.append(el('button', { 'data-id': p.id, onclick: () => select(p.id) }, p.name));
+  }
+  const hash = location.hash.slice(1);
+  select(catalog.some(p => p.id === hash) ? hash : 'down-in-put');
+}
+
+function select(id) {
+  current = catalog.find(p => p.id === id);
+  values = structuredClone(current.defaults);
+  location.hash = id;
+  for (const b of document.querySelectorAll('.products button')) b.classList.toggle('active', b.dataset.id === id);
+  renderInputs();
+  price();
+}
+
+function schedule() {
+  clearTimeout(timer);
+  timer = setTimeout(price, 250);
+}
+
+function renderInputs() {
+  const box = $('#inputs');
+  box.replaceChildren(el('h2', {}, current.name), el('p', { class: 'desc' }, current.description));
+  const groups = { contract: 'Contract', market: 'Market', model: 'Model' };
+  for (const [g, label] of Object.entries(groups)) {
+    const fields = current.fields.filter(f => f.group === g);
+    if (!fields.length) continue;
+    const wrap = el('div', { class: 'group' });
+    wrap.append(el('h2', {}, label));
+    for (const f of fields) wrap.append(fieldControl(f));
+    box.append(wrap);
+    if (g === 'contract' && current.basket) box.append(basketEditor());
+  }
+}
+
+function fieldControl(f) {
+  const wrap = el('div', { class: 'field' });
+  const input = el('input', { type: f.kind === 'date' ? 'date' : 'number', step: f.step || 'any' });
+  const set = d => { values[f.key] = f.kind === 'date' ? d : f.kind === 'int' ? Math.round(+d) : stored(f, +d); };
+  input.value = f.kind === 'date' ? values[f.key] : shown(f, values[f.key]);
+  input.addEventListener('input', () => {
+    if (input.value === '') return;
+    set(input.value);
+    if (slider) slider.value = input.value;
+    schedule();
+  });
+  let slider = null;
+  if (f.min != null && f.max != null) {
+    slider = el('input', { type: 'range', min: f.min, max: f.max, step: f.step || 'any', value: input.value });
+    slider.addEventListener('input', () => { input.value = slider.value; set(slider.value); schedule(); });
+  }
+  wrap.append(el('label', {}, f.label), el('div', { class: 'row' }, slider, input));
+  if (f.help) wrap.append(el('div', { class: 'help' }, f.help));
+  return wrap;
+}
+
+function basketEditor() {
+  const box = el('div', { class: 'group basket' }, el('h2', {}, 'Underliers'));
+  const render = () => {
+    const rows = values.underliers.map((u, i) => el('tr', {},
+      el('td', {}, cell(u, 'name', 'text', i)),
+      el('td', {}, cell(u, 'spot', 'number', i)),
+      el('td', {}, cell(u, 'initial', 'number', i)),
+      el('td', {}, cell(u, 'vol', 'pct', i)),
+      el('td', {}, cell(u, 'dividend', 'pct', i)),
+      el('td', {}, values.underliers.length > 1 ? el('button', { class: 'x', title: 'Remove', onclick: () => {
+        values.underliers.splice(i, 1); render(); schedule();
+      } }, '×') : null)));
+    const table = el('table', {}, el('thead', {}, el('tr', {},
+      ['Name', 'Spot', 'Initial', 'Vol %', 'Div %', ''].map(h => el('th', {}, h)))), el('tbody', {}, rows));
+    box.replaceChildren(el('h2', {}, 'Underliers'), el('div', { class: 'scroll' }, table));
+    if (values.underliers.length < 10) {
+      box.append(el('button', { class: 'add', onclick: () => {
+        const n = values.underliers.length + 1;
+        values.underliers.push({ name: '#' + n, spot: 100, initial: 100, vol: 0.25, dividend: 0 });
+        render(); schedule();
+      } }, '+ Add underlier'));
+    }
+  };
+  const cell = (u, key, kind, i) => {
+    const inp = el('input', { type: kind === 'text' ? 'text' : 'number', step: 'any', style: 'width:' + (kind === 'text' ? '58px' : '62px') });
+    inp.value = kind === 'pct' ? +(u[key] * 100).toPrecision(10) : u[key];
+    inp.addEventListener('input', () => {
+      if (inp.value === '') return;
+      values.underliers[i][key] = kind === 'text' ? inp.value : kind === 'pct' ? +inp.value / 100 : +inp.value;
+      schedule();
+    });
+    return inp;
+  };
+  render();
+  return box;
+}
+
+async function post(path, signal) {
+  const res = await fetch(path, { method: 'POST', body: JSON.stringify({ ...values, product: current.id }), signal });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function price() {
+  inflight?.abort();
+  const ctl = inflight = new AbortController();
+  const out = $('#results');
+  out.classList.add('busy');
+  try {
+    const curve = post('/api/curve', ctl.signal);
+    curve.catch(() => {});
+    const result = await post('/api/price', ctl.signal);
+    renderResults(result);
+    out.classList.remove('busy');
+    const slot = $('#curve-slot');
+    try {
+      slot.replaceChildren(chart(await curve));
+    } catch (err) {
+      if (err.name !== 'AbortError') slot.replaceChildren(el('div', { class: 'help' }, 'Chart unavailable: ' + err.message));
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    out.replaceChildren(el('div', { class: 'error' }, err.message));
+    out.classList.remove('busy');
+  }
+}
+
+const metricValue = m => fmt[m.format](m.value);
+
+function renderResults(r) {
+  const out = $('#results');
+  const head = el('div', { class: 'panel' },
+    el('div', { class: 'title' }, el('h2', {}, r.title),
+      r.status ? el('span', { class: 'badge ' + (r.status === 'Knocked in' ? 'in' : 'out') }, r.status) : null),
+    el('div', { class: 'model' }, r.model),
+    el('div', { class: 'cards' }, r.headline.map(m => el('div', { class: 'card' },
+      el('div', { class: 'k' }, m.label), el('div', { class: 'v' }, metricValue(m)),
+      m.note ? el('div', { class: 'n' }, m.note) : null))));
+  const panels = [head];
+  panels.push(el('div', { class: 'panel' }, el('h2', {}, 'Price vs spot'),
+    el('div', { id: 'curve-slot', class: 'help' }, 'Computing…')));
+  const lists = [['Details', r.details], ['Greeks', r.greeks]].filter(([, l]) => l && l.length);
+  if (lists.length) {
+    panels.push(el('div', { class: 'two' }, lists.map(([name, list]) => el('div', { class: 'panel' },
+      el('h2', {}, name), el('dl', {}, list.map(m => [el('dt', {}, m.label), el('dd', {}, metricValue(m))]))))));
+  }
+  if (r.table) {
+    panels.push(el('div', { class: 'panel scroll' }, el('h2', {}, 'Underliers'), el('table', {},
+      el('thead', {}, el('tr', {}, r.table.columns.map(c => el('th', {}, c)))),
+      el('tbody', {}, r.table.rows.map(row => el('tr', {}, row.map(c => el('td', {}, c))))))));
+  }
+  if (r.notes?.length) panels.at(-1).append(el('ul', { class: 'notes' }, r.notes.map(n => el('li', {}, n))));
+  out.replaceChildren(...panels);
+}
+
+function chart(c) {
+  const W = 640, H = 300, L = 56, R = 16, T = 12, B = 34;
+  const pts = c.points;
+  const hasPayoff = pts.some(p => p.payoff != null);
+  const xs = pts.map(p => p.x);
+  const ys = pts.flatMap(p => [p.price, p.payoff].filter(v => v != null));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(0, ...ys), y1 = Math.max(...ys);
+  if (y1 === y0) y1 = y0 + 1;
+  const pad = (y1 - y0) * 0.06; y1 += pad;
+  const sx = x => L + (x - x0) / (x1 - x0) * (W - L - R);
+  const sy = y => H - B - (y - y0) / (y1 - y0) * (H - T - B);
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = (tag, attrs = {}, text) => {
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}` });
+  const nice = (lo, hi, n) => {
+    const raw = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(v => v >= raw);
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toPrecision(12));
+    return out;
+  };
+  for (const v of nice(y0, y1, 5)) {
+    svg.append(s('line', { x1: L, x2: W - R, y1: sy(v), y2: sy(v), stroke: 'var(--line)', 'stroke-width': 1 }));
+    svg.append(s('text', { x: L - 6, y: sy(v) + 4, 'text-anchor': 'end' }, +v.toPrecision(4)));
+  }
+  for (const v of nice(x0, x1, 7)) {
+    svg.append(s('text', { x: sx(v), y: H - B + 16, 'text-anchor': 'middle' }, +v.toPrecision(4)));
+  }
+  svg.append(s('text', { x: (L + W - R) / 2, y: H - 4, 'text-anchor': 'middle' }, c.xLabel));
+  const path = key => pts.filter(p => p[key] != null).map((p, i) => `${i ? 'L' : 'M'}${sx(p.x).toFixed(1)},${sy(p[key]).toFixed(1)}`).join('');
+  if (hasPayoff) svg.append(s('path', { d: path('payoff'), fill: 'none', stroke: 'var(--accent2)', 'stroke-width': 2, 'stroke-dasharray': '5 4' }));
+  svg.append(s('path', { d: path('price'), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.5 }));
+  for (const m of c.markers || []) {
+    if (m.x < x0 || m.x > x1) continue;
+    svg.append(s('line', { x1: sx(m.x), x2: sx(m.x), y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-dasharray': '2 4' }));
+    svg.append(s('text', { x: sx(m.x) + 4, y: T + 10 }, `${m.label} ${+m.x.toPrecision(5)}`));
+  }
+  const interp = x => {
+    for (let i = 1; i < pts.length; i++) if (x <= pts[i].x) {
+      const a = pts[i - 1], b = pts[i], t = (x - a.x) / (b.x - a.x);
+      return a.price + t * (b.price - a.price);
+    }
+    return pts.at(-1).price;
+  };
+  if (c.current >= x0 && c.current <= x1) {
+    svg.append(s('line', { x1: sx(c.current), x2: sx(c.current), y1: T, y2: H - B, stroke: 'var(--good)', 'stroke-width': 1 }));
+    svg.append(s('circle', { cx: sx(c.current), cy: sy(interp(c.current)), r: 4.5, fill: 'var(--good)' }));
+  }
+  const tip = s('g', { visibility: 'hidden' });
+  const dot = s('circle', { r: 4, fill: 'var(--accent)' });
+  const label = s('text', { 'text-anchor': 'middle', style: 'fill:var(--text);font-size:12px' });
+  tip.append(dot, label); svg.append(tip);
+  svg.addEventListener('mousemove', ev => {
+    const box = svg.getBoundingClientRect();
+    const x = x0 + ((ev.clientX - box.left) / box.width * W - L) / (W - L - R) * (x1 - x0);
+    if (x < x0 || x > x1) { tip.setAttribute('visibility', 'hidden'); return; }
+    const y = interp(x);
+    dot.setAttribute('cx', sx(x)); dot.setAttribute('cy', sy(y));
+    label.setAttribute('x', Math.min(Math.max(sx(x), L + 50), W - R - 50)); label.setAttribute('y', sy(y) - 10);
+    label.textContent = `${+x.toPrecision(5)} → ${fmt.money(y)}`;
+    tip.setAttribute('visibility', 'visible');
+  });
+  svg.addEventListener('mouseleave', () => tip.setAttribute('visibility', 'hidden'));
+  const legend = el('div', { class: 'legend' },
+    el('span', {}, el('i', { style: 'border-color:var(--accent)' }), c.priceLabel),
+    hasPayoff ? el('span', {}, el('i', { style: 'border-color:var(--accent2);border-top-style:dashed' }), c.payoffLabel) : null,
+    el('span', {}, el('i', { style: 'border-color:var(--good)' }), 'Current spot'));
+  return el('div', {}, legend, svg);
+}
+
+init();
+</script>
+</body>
+</html>
